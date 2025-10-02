@@ -1,4 +1,3 @@
-
 # memvid/llm_client.py
 
 import os
@@ -311,17 +310,22 @@ class LLMClient:
     def __init__(self, provider: str = 'google', model: str = None, api_key: str = None):
         self.provider_name = provider.lower()
 
-        if self.provider_name not in self.PROVIDERS:
-            raise ValueError(f"Unsupported provider: {provider}. Supported: {list(self.PROVIDERS.keys())}")
+        providers = self.PROVIDERS  # Local variable for faster access
 
-        # Check if provider is available
-        availability_map = {
-            'openai': OPENAI_AVAILABLE,
-            'google': GOOGLE_AVAILABLE,
-            'anthropic': ANTHROPIC_AVAILABLE
-        }
+        if self.provider_name not in providers:
+            raise ValueError(f"Unsupported provider: {provider}. Supported: {list(providers.keys())}")
 
-        if not availability_map[self.provider_name]:
+        # Use direct availability checks instead of recreating the map in every call
+        if self.provider_name == 'openai':
+            available = OPENAI_AVAILABLE
+        elif self.provider_name == 'google':
+            available = GOOGLE_AVAILABLE
+        elif self.provider_name == 'anthropic':
+            available = ANTHROPIC_AVAILABLE
+        else:
+            available = False
+
+        if not available:
             raise ImportError(f"{provider} provider not available. Please install the required library.")
 
         # Get API key from environment if not provided
@@ -338,7 +342,7 @@ class LLMClient:
             model = self._get_default_model(provider)
 
         # Initialize provider
-        provider_class = self.PROVIDERS[self.provider_name]
+        provider_class = providers[self.provider_name]
         self.provider = provider_class(api_key=api_key, model=model)
 
     def _get_api_key_from_env(self, provider: str) -> Optional[str]:
@@ -387,20 +391,25 @@ class LLMClient:
     @classmethod
     def list_available_providers(cls) -> List[str]:
         """List providers that are actually available (libraries installed)"""
-        availability_map = {
-            'openai': OPENAI_AVAILABLE,
-            'google': GOOGLE_AVAILABLE,
-            'anthropic': ANTHROPIC_AVAILABLE
-        }
-        return [provider for provider, available in availability_map.items() if available]
+        # Inline implementation to avoid recreating the map in every call
+        available = []
+        if OPENAI_AVAILABLE:
+            available.append('openai')
+        if GOOGLE_AVAILABLE:
+            available.append('google')
+        if ANTHROPIC_AVAILABLE:
+            available.append('anthropic')
+        return available
 
     @classmethod
     def check_api_keys(cls) -> Dict[str, bool]:
         """Check which providers have API keys available in environment"""
         results = {}
         temp_client = cls.__new__(cls)  # Create instance without calling __init__
+        # Pre-fetch available providers to avoid recomputation
+        available_providers = cls.list_available_providers()
 
-        for provider in cls.list_available_providers():
+        for provider in available_providers:
             api_key = temp_client._get_api_key_from_env(provider)
             results[provider] = bool(api_key)
 
