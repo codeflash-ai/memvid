@@ -156,7 +156,7 @@ def get_codec_parameters(codec_name=None):
     if codec_name is None:
         return codec_parameters
 
-    if codec_name not in codec_parameters:
+    try:
+        return codec_parameters[codec_name]
+    except KeyError:
         raise ValueError(f"Unsupported codec: {codec_name}. Available: {list(codec_parameters.keys())}")
-
-    return codec_parameters[codec_name]
