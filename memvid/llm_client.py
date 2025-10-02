@@ -1,4 +1,3 @@
-
 # memvid/llm_client.py
 
 import os
@@ -387,12 +386,14 @@ class LLMClient:
     @classmethod
     def list_available_providers(cls) -> List[str]:
         """List providers that are actually available (libraries installed)"""
-        availability_map = {
-            'openai': OPENAI_AVAILABLE,
-            'google': GOOGLE_AVAILABLE,
-            'anthropic': ANTHROPIC_AVAILABLE
-        }
-        return [provider for provider, available in availability_map.items() if available]
+        result = []
+        if OPENAI_AVAILABLE:
+            result.append('openai')
+        if GOOGLE_AVAILABLE:
+            result.append('google')
+        if ANTHROPIC_AVAILABLE:
+            result.append('anthropic')
+        return result
 
     @classmethod
     def check_api_keys(cls) -> Dict[str, bool]:
