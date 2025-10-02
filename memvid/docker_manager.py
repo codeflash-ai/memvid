@@ -48,6 +48,19 @@ class DockerManager:
         if self.verbose:
             logger.info(self.get_status_message())
 
+        # Cache WSL status to avoid frequent file reading in get_container_info
+        self._is_wsl_cached = None
+
+        # Cache docker version on init so get_container_info avoids repeated calls
+        self._docker_version = None
+        if self.docker_available:
+            try:
+                result = subprocess.run([self.docker_cmd, "--version"],
+                                        capture_output=True, text=True, timeout=5)
+                self._docker_version = result.stdout.strip() if result.returncode == 0 else "unknown"
+            except Exception:
+                self._docker_version = "unknown"
+
     def _find_docker_command(self) -> Optional[str]:
         """Find appropriate Docker command (WSL compatible)"""
         # Check for Docker Desktop on WSL
@@ -319,11 +332,15 @@ class DockerManager:
 
     def _is_wsl(self) -> bool:
         """Check if running in WSL environment"""
+        if self._is_wsl_cached is not None:
+            return self._is_wsl_cached
         try:
             with open('/proc/version', 'r') as f:
-                return 'microsoft' in f.read().lower()
-        except:
-            return False
+                result = 'microsoft' in f.read().lower()
+        except Exception:
+            result = False
+        self._is_wsl_cached = result
+        return result
 
     def _prepare_container_command(self, ffmpeg_cmd: List[str], working_dir: str) -> List[str]:
         """
@@ -387,13 +404,7 @@ class DockerManager:
         }
 
         if self.docker_available:
-            try:
-                # Get Docker version
-                result = subprocess.run([self.docker_cmd, "--version"],
-                                        capture_output=True, text=True, timeout=5)
-                info["docker_version"] = result.stdout.strip() if result.returncode == 0 else "unknown"
-            except:
-                info["docker_version"] = "unknown"
+            info["docker_version"] = self._docker_version
 
         return info
 
