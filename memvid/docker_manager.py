@@ -405,6 +405,6 @@ class DockerManager:
         try:
             # Remove container if it exists
             subprocess.run([self.docker_cmd, "rmi", self.container_name],
-                           capture_output=True, timeout=30)
+                           capture_output=True, timeout=30, check=False)
         except:
             pass  # Ignore cleanup errors
