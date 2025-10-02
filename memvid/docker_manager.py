@@ -33,8 +33,10 @@ class DockerManager:
         self.verbose = verbose
 
         # Docker detection
-        self.docker_cmd = self._find_docker_command()
-        self.docker_available = self.docker_cmd is not None
+        docker_cmd = self._find_docker_command()
+        self.docker_cmd = docker_cmd
+        docker_available = docker_cmd is not None
+        self.docker_available = docker_available
         self.container_ready = False
 
         # Setup state
@@ -42,7 +44,7 @@ class DockerManager:
         self.project_root = self._find_project_root()
 
         # Initialize Docker environment
-        if self.docker_available:
+        if docker_available:
             self._check_docker_environment()
 
         if self.verbose:
@@ -336,16 +338,16 @@ class DockerManager:
         Returns:
             Command to run in container
         """
-        # Create command file for complex FFmpeg commands
-        cmd_data = {
-            "command": ffmpeg_cmd,
-            "working_dir": "/workspace"
-        }
+        # Use direct string formatting and avoid extra dict construction on every call.
+        # This improves performance for very frequent calls, since dict and JSON serialization are
+        # runtime multipliers in hot loops.
+        # But since we must preserve behavior, we still generate the same JSON.
+        # The function-wide change is variable predeclaration for tight hot paths.
 
-        # The command file will be written by the container execution
+        cmd_data = '{"command": %s, "working_dir": "/workspace"}' % json.dumps(ffmpeg_cmd)
         return [
             "python3", "/scripts/ffmpeg_executor.py",
-            json.dumps(cmd_data)
+            cmd_data
         ]
 
     def execute_command_directly(self, cmd: List[str], working_dir: Path, **kwargs) -> subprocess.CompletedProcess:
